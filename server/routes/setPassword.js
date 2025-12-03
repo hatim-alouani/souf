@@ -1,4 +1,4 @@
-import bcrypt from 'bcrypt';
+import bcryptjs from 'bcryptjs';
 
 export default async function (fastify, opts) {
   const pool = fastify.pool;

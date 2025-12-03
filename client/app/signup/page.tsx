@@ -9,7 +9,6 @@ export default function SignupPage() {
   const router = useRouter();
 
   const [fullName, setFullName] = useState('');
-  const [company, setCompany] = useState('');
   const [email, setEmail] = useState('');
   const [email2, setEmail2] = useState('');
   const [persona, setPersona] = useState<Persona>('');
@@ -39,8 +38,7 @@ export default function SignupPage() {
         body: JSON.stringify({
           full_name: fullName,
           email,
-          company_name: company || null,
-          user_persona: persona,
+          user_role : persona,
         }),
       });
 
@@ -85,14 +83,6 @@ export default function SignupPage() {
             onChange={(e) => setFullName(e.target.value)}
             className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-indigo-500"
             required
-          />
-
-          <input
-            type="text"
-            placeholder="Company name"
-            value={company}
-            onChange={(e) => setCompany(e.target.value)}
-            className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-indigo-500"
           />
 
           <input

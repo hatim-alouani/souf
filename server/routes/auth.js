@@ -1,5 +1,5 @@
 // routes/auth.js
-import bcrypt from "bcrypt";
+import bcryptjs from 'bcryptjs';
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { sendEmail } from "../services/sendEmail.js";
@@ -10,32 +10,34 @@ export default async function authRoutes(fastify, opts) {
   // 🧩 POST /auth/register
   fastify.post("/auth/register", async (req, reply) => {
     try {
-      const { full_name, email, company_name, user_persona } = req.body;
+      const { full_name, email, user_role  } = req.body;
 
       if (!full_name || !email) {
         return reply.code(400).send({ ok: false, error: "Full name and email are required" });
       }
 
-      // Insert or update user
+      // ✅ FIX: Table name should be lowercase 'users' not 'Users'
       const userRes = await pool.query(
-        `INSERT INTO Users (full_name, email, company_name, user_persona, status)
-         VALUES ($1,$2,$3,$4,'pending')
-         ON CONFLICT (email) DO UPDATE
-           SET full_name = COALESCE(EXCLUDED.full_name, Users.full_name),
-               company_name = COALESCE(EXCLUDED.company_name, Users.company_name),
-               user_persona = COALESCE(EXCLUDED.user_persona, Users.user_persona),
-               last_updated = NOW()
-         RETURNING user_id, email, status`,
-        [full_name, email, company_name || null, user_persona || null]
+        `INSERT INTO users (full_name, email, user_role)
+        VALUES ($1,$2,$3)
+        ON CONFLICT (email) DO UPDATE
+          SET full_name = COALESCE(EXCLUDED.full_name, users.full_name),
+              user_role  = COALESCE(EXCLUDED.user_role , users.user_role ),
+              last_updated = NOW()
+        RETURNING user_id, email, status`,
+        [full_name, email || null, user_role  || null]
       );
+
 
       const { user_id: userId } = userRes.rows[0];
 
       // Create verification token
       const token = crypto.randomBytes(32).toString("hex");
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 h
+      
+      // ✅ FIX: Table name lowercase
       await pool.query(
-        `UPDATE Users SET verification_token=$1, token_expires_at=$2 WHERE user_id=$3`,
+        `UPDATE users SET verification_token=$1, token_expires_at=$2 WHERE user_id=$3`,
         [token, expiresAt, userId]
       );
 
@@ -49,7 +51,15 @@ export default async function authRoutes(fastify, opts) {
 
       reply.send({ ok: true, message: "Confirmation email sent. Please check your inbox." });
     } catch (err) {
-      fastify.log.error("❌ Registration error:", err);
+      // ✅ FIX: Properly log error details
+      fastify.log.error("❌ Registration error:", {
+        message: err.message,
+        code: err.code,
+        detail: err.detail,
+        hint: err.hint,
+        stack: err.stack
+      });
+      console.error("Full registration error:", err); // Also console log
       reply.code(500).send({ ok: false, error: "Failed to register user" });
     }
   });
@@ -63,13 +73,16 @@ export default async function authRoutes(fastify, opts) {
         return reply.code(400).send({ ok: false, error: "Email and password are required" });
       }
 
-      const result = await pool.query("SELECT * FROM Users WHERE email=$1", [email]);
+      // ✅ FIX: Table name lowercase
+      const result = await pool.query("SELECT * FROM users WHERE email=$1", [email]);
       const user = result.rows[0];
+      
       if (!user || !user.password_hash) {
         return reply.code(401).send({ ok: false, error: "Invalid email or password" });
       }
 
-      const match = await bcrypt.compare(password, user.password_hash);
+      // ✅ FIX: Use bcryptjs (you imported it correctly)
+      const match = await bcryptjs.compare(password, user.password_hash);
       if (!match) {
         return reply.code(401).send({ ok: false, error: "Invalid email or password" });
       }
@@ -87,13 +100,18 @@ export default async function authRoutes(fastify, opts) {
           user_id: user.user_id,
           email: user.email,
           full_name: user.full_name,
-          company_name: user.company_name,
-          user_persona: user.user_persona,
+          user_role : user.user_role ,
           status: user.status,
         },
       });
     } catch (err) {
-      fastify.log.error("❌ Login error:", err);
+      // ✅ FIX: Properly log error
+      fastify.log.error("❌ Login error:", {
+        message: err.message,
+        code: err.code,
+        stack: err.stack
+      });
+      console.error("Full login error:", err);
       reply.code(500).send({ ok: false, error: "Server error" });
     }
   });

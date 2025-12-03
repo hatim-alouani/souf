@@ -978,6 +978,11 @@ html, body {
   --tw-ring-color: rgba(99, 102, 241, var(--tw-ring-opacity));
 }
 
+.disabled\:bg-gray-400:disabled {
+  --tw-bg-opacity: 1;
+  background-color: rgba(156, 163, 175, var(--tw-bg-opacity));
+}
+
 .group:hover .group-hover\:scale-100 {
   --tw-scale-x: 1;
   --tw-scale-y: 1;

@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+
 export default function ChatbotPage() {
   const [question, setQuestion] = useState("");
   const [response, setResponse] = useState("");
@@ -15,50 +17,81 @@ export default function ChatbotPage() {
 
     const token = localStorage.getItem("token");
 
-    const res = await fetch("http://localhost:3000/chat", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: "Bearer " + token,
-      },
-      body: JSON.stringify({
-        question,
-        conversationId, // <-- IMPORTANT
-      }),
-    });
+    try {
+      const res = await fetch(`${API_URL}/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          question,
+          conversationId,
+        }),
+      });
 
-    if (!res.ok) {
-      setResponse("Error: Unable to reach backend.");
+      if (!res.ok) {
+        const errorText = await res.text();
+        setResponse(`Error: ${res.status} - ${errorText || "Unable to reach backend."}`);
+        setIsLoading(false);
+        return;
+      }
+
+      // Extract conversation id from header
+      const convHeader = res.headers.get("X-Conversation-Id");
+      if (convHeader) {
+        setConversationId(Number(convHeader));
+      }
+
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+
+      let accumulated = "";
+      let metadataParsed = false;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        
+        // Handle metadata if present
+        if (!metadataParsed && chunk.includes("METADATA_START:")) {
+          const metadataMatch = chunk.match(/METADATA_START:(.+?):METADATA_END/);
+          if (metadataMatch) {
+            // You can extract sources here if needed
+            // const metadata = JSON.parse(metadataMatch[1]);
+            metadataParsed = true;
+            // Remove metadata from chunk before displaying
+            const cleanChunk = chunk.replace(/METADATA_START:.+?:METADATA_END\n\n/, "");
+            accumulated += cleanChunk;
+          } else {
+            accumulated += chunk;
+          }
+        } else {
+          accumulated += chunk;
+        }
+        
+        setResponse(accumulated);
+      }
+
       setIsLoading(false);
-      return;
+    } catch (error) {
+      console.error("Fetch error:", error);
+      setResponse(`Error: ${error instanceof Error ? error.message : "Network error. Check if server is running."}`);
+      setIsLoading(false);
     }
-
-    // Extract conversation id from header
-    const convHeader = res.headers.get("X-Conversation-Id");
-    if (convHeader) {
-      setConversationId(Number(convHeader));
-    }
-
-    const reader = res.body!.getReader();
-    const decoder = new TextDecoder();
-
-    let accumulated = "";
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      const chunk = decoder.decode(value, { stream: true });
-      accumulated += chunk;
-      setResponse(accumulated);
-    }
-
-    setIsLoading(false);
   }
 
   return (
     <div className="p-8 max-w-2xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">AI Assistant</h1>
+      
+      {/* Debug info - remove in production */}
+      <div className="mb-4 text-xs text-gray-500">
+        API URL: {API_URL}
+        {conversationId && ` | Conversation ID: ${conversationId}`}
+      </div>
 
       <form onSubmit={sendMessage} className="flex gap-3">
         <input
@@ -67,12 +100,13 @@ export default function ChatbotPage() {
           placeholder="Ask something..."
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
+          disabled={isLoading}
         />
         <button
-          className="bg-blue-600 text-white px-4 py-2 rounded"
+          className="bg-blue-600 text-white px-4 py-2 rounded disabled:bg-gray-400"
           disabled={isLoading}
         >
-          Send
+          {isLoading ? "Sending..." : "Send"}
         </button>
       </form>
 
