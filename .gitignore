@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+logs/
+*.log
+
+# Vector Database (large, regenerable)
+vectorstore/
+
+# Data files (potentially sensitive/large)
+data/raw/*.pdf
+data/processed/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+*.ipynb
+
+# Debug scripts (optional - keep if you want to share)
+debug_retrieval.py
+verify_chunk.py
+find_p2o5.py
+check_physico.py
+
+# Model cache (very large)
+.cache/
+models/
+
+# Streamlit
+.streamlit/
+
+
+server/.env

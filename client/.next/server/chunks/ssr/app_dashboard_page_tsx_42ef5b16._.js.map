@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///home/alouani/intern/AI-AUDIT/App/client/app/dashboard/page.tsx"],"sourcesContent":["'use client';\n\nexport default function AccountPage() {\n  return (\n    <main className=\"flex flex-col items-center justify-center min-h-screen bg-gray-50\">\n      <h2 className=\"text-2xl font-semibold mb-6\">Dashboard</h2>\n    </main>\n  );\n}\n"],"names":[],"mappings":";;;;;AAAA;;AAEe,SAAS;IACtB,qBACE,8OAAC;QAAK,WAAU;kBACd,cAAA,8OAAC;YAAG,WAAU;sBAA8B;;;;;;;;;;;AAGlD","debugId":null}}]
+}

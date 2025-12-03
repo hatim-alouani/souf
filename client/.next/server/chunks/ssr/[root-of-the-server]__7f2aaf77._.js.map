@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 3, "column": 0}, "map": {"version":3,"sources":[],"names":[],"mappings":"","debugId":null}},
+    {"offset": {"line": 15, "column": 0}, "map": {"version":3,"sources":["file:///home/alouani/intern/AI-AUDIT/App/client/app/page.tsx"],"sourcesContent":["export default function Home() {\n  return (\n    <div className=\"flex items-center justify-center h-screen bg-gradient-to-br from-indigo-500 to-blue-700 text-white text-4xl font-bold\">\n      Tailwind is working 🎉\n    </div>\n  );\n}\n"],"names":[],"mappings":";;;;;;AAAe,SAAS;IACtB,qBACE,8OAAC;QAAI,WAAU;kBAAwH;;;;;;AAI3I","debugId":null}}]
+}
