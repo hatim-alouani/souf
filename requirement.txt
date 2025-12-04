@@ -1,0 +1,17 @@
+langchain
+langchain-community
+langchain-huggingface
+langchain-chroma
+langchain-text-splitters
+langchain-ollama
+chromadb
+sentence-transformers
+rank_bm25
+pymupdf
+streamlit
+torch
+torchvision
+torchaudio --index-url https://download.pytorch.org/whl/cu121
+fastapi
+uvicorn
+asyncio

@@ -1,28 +1,32 @@
 import got from "got";
 
 async function chatRoutes(fastify, options) {
+  // Ensure user is authenticated
   fastify.addHook("preHandler", async (req, reply) => {
     if (!req.user) {
-      return reply.code(401)
-        .header('Content-Type', 'application/json')
-        .send(JSON.stringify({ message: "Authentication required." }));
+      return reply
+        .code(401)
+        .header("Content-Type", "application/json")
+        .send({ message: "Authentication required." });
     }
   });
 
+  // POST /chat
   fastify.post("/chat", async (req, reply) => {
     const { question, conversationId } = req.body;
     const userId = req.user.user_id;
 
-    if (!question) {
-      return reply.code(400)
-        .header('Content-Type', 'application/json')
-        .send(JSON.stringify({ message: "Question is required." }));
+    if (!question || !question.trim()) {
+      return reply
+        .code(400)
+        .header("Content-Type", "application/json")
+        .send({ message: "Question is required." });
     }
 
     let convId = conversationId;
 
-    // Database logging (best effort - don't block AI response)
     try {
+      // 1️⃣ Store user question in DB
       if (!convId) {
         const r = await fastify.pool.query(
           "INSERT INTO conversations (user_id, title) VALUES ($1, $2) RETURNING conversation_id",
@@ -31,99 +35,84 @@ async function chatRoutes(fastify, options) {
         convId = r.rows[0].conversation_id;
       }
 
-      if (convId) {
-        const idx = await fastify.pool.query(
-          "SELECT COUNT(*) FROM messages WHERE conversation_id = $1",
-          [convId]
-        );
-        const msgIndex = parseInt(idx.rows[0].count) + 1;
+      const idxRes = await fastify.pool.query(
+        "SELECT COUNT(*) FROM messages WHERE conversation_id = $1",
+        [convId]
+      );
+      const msgIndex = parseInt(idxRes.rows[0].count) + 1;
 
-        await fastify.pool.query(
-          "INSERT INTO messages (conversation_id, user_id, content, speaker, message_index) VALUES ($1, $2, $3, $4, $5)",
-          [convId, userId, question, "User", msgIndex]
-        );
-      }
-    } catch (e) {
-      fastify.log.error("DB logging error:", e);
-      // Continue without convId - AI response is more important than DB logging
-      convId = null;
+      await fastify.pool.query(
+        "INSERT INTO messages (conversation_id, user_id, content, speaker, message_index) VALUES ($1, $2, $3, $4, $5)",
+        [convId, userId, question, "User", msgIndex]
+      );
+    } catch (err) {
+      fastify.log.error("DB error storing user question:", err);
+      return reply.code(500).send({ message: "Failed to store message", error: err.message });
     }
 
+    // 2️⃣ Send question to FastAPI and wait for full response
     const aiUrl = process.env.AI_SERVICE_URL;
-
     if (!aiUrl) {
       fastify.log.error("AI_SERVICE_URL not configured");
-      return reply.code(500)
-        .header('Content-Type', 'application/json')
-        .send(JSON.stringify({ message: "AI service not configured." }));
+      return reply.code(500).send({ message: "AI service not configured." });
     }
 
     try {
-      // Stream request to FastAPI
-      const fastAPIStream = got.stream.post(aiUrl, {
-        json: {
-          user_id: userId,
-          question,
-          conversation_id: convId,
-        },
-        headers: {
-          "x-internal-secret": process.env.INTERNAL_API_KEY?.trim(),
-        },
-        timeout: { request: 600000 },
-      });
+      const aiResText = await got
+        .post(aiUrl, {
+          json: { user_id: userId, question, conversation_id: convId },
+          headers: { "x-internal-secret": process.env.INTERNAL_API_KEY?.trim() },
+          timeout: { request: 600000 },
+        })
+        .text();
 
-      // Set proper headers for streaming
-      reply.code(200);
-      reply.header("Content-Type", "text/plain; charset=utf-8");
-      
-      // ✅ FIX: Only set header if convId exists
-      if (convId !== null) {
-        reply.header("X-Conversation-Id", convId.toString());
-      }
-      
-      reply.header("Transfer-Encoding", "chunked");
+      // 3️⃣ Parse metadata if available
+      let parsedAnswer = aiResText;
+      let sources = [];
 
-      // Pipe FastAPI stream directly to Fastify response
-      fastAPIStream.pipe(reply.raw);
+      try {
+        const metaStart = aiResText.indexOf("METADATA_START:");
+        const metaEnd = aiResText.indexOf(":METADATA_END");
 
-      // Handle stream errors
-      fastAPIStream.on("error", (err) => {
-        fastify.log.error("FastAPI stream error:", err);
-        if (!reply.raw.headersSent) {
-          reply.code(502)
-            .header('Content-Type', 'application/json')
-            .send(JSON.stringify({ 
-              message: "AI service stream failed.", 
-              error: err.message 
-            }));
-        } else if (!reply.raw.writableEnded) {
-          reply.raw.write("\n\nERROR: AI service connection lost.");
-          reply.raw.end();
+        if (metaStart !== -1 && metaEnd !== -1) {
+          const jsonStr = aiResText.slice(metaStart + 15, metaEnd);
+          const metadata = JSON.parse(jsonStr);
+          parsedAnswer = metadata.answer || "";
+          sources = metadata.sources || [];
         }
+      } catch (err) {
+        fastify.log.error("Failed to parse metadata:", err);
+      }
+
+      // 4️⃣ Store AI response in DB
+      try {
+        const idxRes2 = await fastify.pool.query(
+          "SELECT COUNT(*) FROM messages WHERE conversation_id = $1",
+          [convId]
+        );
+        const aiIndex = parseInt(idxRes2.rows[0].count) + 1;
+
+        await fastify.pool.query(
+          "INSERT INTO messages (conversation_id, user_id, content, speaker, message_index) VALUES ($1, $2, $3, $4, $5)",
+          [convId, userId, parsedAnswer, "AI", aiIndex]
+        );
+      } catch (err) {
+        fastify.log.error("DB error storing AI response:", err);
+      }
+
+      // 5️⃣ Return final answer + sources to frontend
+      return reply.code(200).send({
+        conversationId: convId,
+        answer: parsedAnswer,
+        sources,
       });
 
-      // Handle successful stream end
-      fastAPIStream.on("end", () => {
-        fastify.log.info("FastAPI stream completed successfully");
-      });
-
-      return reply;
     } catch (err) {
-      fastify.log.error("Proxy error:", err);
-      
-      if (reply.raw.headersSent) {
-        fastify.log.error("Cannot send error response - headers already sent");
-        if (!reply.raw.writableEnded) {
-          reply.raw.end();
-        }
-      } else {
-        return reply.code(503)
-          .header('Content-Type', 'application/json')
-          .send(JSON.stringify({ 
-            message: "AI service unavailable.", 
-            error: err.message 
-          }));
-      }
+      fastify.log.error("Error contacting AI service:", err);
+      return reply.code(502).send({
+        message: "AI service unavailable",
+        error: err.message,
+      });
     }
   });
 }

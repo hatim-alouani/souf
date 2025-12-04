@@ -9,9 +9,10 @@ export default async function (fastify, opts) {
       if (!token || !password)
         return reply.code(400).send({ ok: false, error: 'Missing token or password' });
 
-      const hashed = await bcrypt.hash(password, 10);
+      const hashed = await bcryptjs.hash(password, 10); // use bcryptjs
+
       const result = await pool.query(
-        `UPDATE Users
+        `UPDATE users
          SET password_hash=$1, status='active', verification_token=NULL, token_expires_at=NULL
          WHERE verification_token=$2`,
         [hashed, token]

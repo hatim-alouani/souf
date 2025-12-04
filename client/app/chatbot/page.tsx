@@ -1,24 +1,37 @@
 "use client";
 
 import { useState } from "react";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+import { useRouter } from "next/navigation";
 
 export default function ChatbotPage() {
+  const router = useRouter();
   const [question, setQuestion] = useState("");
   const [response, setResponse] = useState("");
   const [conversationId, setConversationId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  async function sendMessage(e: any) {
+  async function sendMessage(e: React.FormEvent) {
     e.preventDefault();
+    
+    if (!question.trim()) {
+      setResponse("Please enter a question.");
+      return;
+    }
+
     setIsLoading(true);
     setResponse("");
 
     const token = localStorage.getItem("token");
 
+    if (!token) {
+      setResponse("❌ You must be logged in to use the chatbot.");
+      setIsLoading(false);
+      setTimeout(() => router.push("/login"), 2000);
+      return;
+    }
+
     try {
-      const res = await fetch(`${API_URL}/chat`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/chat`, {  // ✅ FIXED - parenthesis instead of backtick
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -31,8 +44,16 @@ export default function ChatbotPage() {
       });
 
       if (!res.ok) {
-        const errorText = await res.text();
-        setResponse(`Error: ${res.status} - ${errorText || "Unable to reach backend."}`);
+        const text = await res.text();
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch {
+          console.error("Server returned non-JSON response:", text);
+          throw new Error("Invalid server response");
+        }
+        
+        setResponse(`❌ Error: ${data.message || `${res.status} - ${res.statusText}`}`);
         setIsLoading(false);
         return;
       }
@@ -59,10 +80,7 @@ export default function ChatbotPage() {
         if (!metadataParsed && chunk.includes("METADATA_START:")) {
           const metadataMatch = chunk.match(/METADATA_START:(.+?):METADATA_END/);
           if (metadataMatch) {
-            // You can extract sources here if needed
-            // const metadata = JSON.parse(metadataMatch[1]);
             metadataParsed = true;
-            // Remove metadata from chunk before displaying
             const cleanChunk = chunk.replace(/METADATA_START:.+?:METADATA_END\n\n/, "");
             accumulated += cleanChunk;
           } else {
@@ -76,43 +94,84 @@ export default function ChatbotPage() {
       }
 
       setIsLoading(false);
+      setQuestion(""); // Clear input after successful send
     } catch (error) {
-      console.error("Fetch error:", error);
-      setResponse(`Error: ${error instanceof Error ? error.message : "Network error. Check if server is running."}`);
+      console.error("Network error:", error);
+      setResponse(`❌ Network error. Check connection or server URL. ${error instanceof Error ? error.message : ""}`);
       setIsLoading(false);
     }
   }
 
   return (
-    <div className="p-8 max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">AI Assistant</h1>
-      
-      {/* Debug info - remove in production */}
-      <div className="mb-4 text-xs text-gray-500">
-        API URL: {API_URL}
-        {conversationId && ` | Conversation ID: ${conversationId}`}
+    <main className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-gray-100 to-indigo-100 text-gray-800 font-sans p-4">
+      {/* Title */}
+      <div className="text-center mb-6 animate-fadeIn">
+        <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 mb-2">
+          AI Assistant
+        </h1>
+        <p className="text-lg text-gray-600">Ask me anything about your business</p>
       </div>
 
-      <form onSubmit={sendMessage} className="flex gap-3">
-        <input
-          type="text"
-          className="border p-2 flex-1"
-          placeholder="Ask something..."
-          value={question}
-          onChange={(e) => setQuestion(e.target.value)}
-          disabled={isLoading}
-        />
-        <button
-          className="bg-blue-600 text-white px-4 py-2 rounded disabled:bg-gray-400"
-          disabled={isLoading}
-        >
-          {isLoading ? "Sending..." : "Send"}
-        </button>
-      </form>
+      {/* Chat Card */}
+      <div className="bg-white/70 backdrop-blur-xl rounded-2xl shadow-xl p-6 w-[90%] sm:w-[700px] max-w-4xl animate-fadeIn">
+        
+        {/* Debug info - can be removed in production */}
+        {conversationId && (
+          <div className="mb-4 text-xs text-gray-500 text-center">
+            Conversation ID: {conversationId}
+          </div>
+        )}
 
-      <div className="mt-6 whitespace-pre-wrap bg-gray-100 p-4 rounded min-h-[200px]">
-        {response || (isLoading ? "Thinking..." : "")}
+        {/* Response Area */}
+        <div className="mb-6 whitespace-pre-wrap bg-gray-50 p-6 rounded-xl min-h-[300px] max-h-[400px] overflow-y-auto border border-gray-200">
+          {response || (isLoading ? "🤔 Thinking..." : "👋 Welcome! Ask me a question to get started.")}
+        </div>
+
+        {/* Input Form */}
+        <form onSubmit={sendMessage} className="space-y-4">
+          <div className="flex gap-3">
+            <input
+              type="text"
+              className="flex-1 border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              placeholder="Type your question here..."
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              disabled={isLoading}
+            />
+            <button
+              type="submit"
+              disabled={isLoading || !question.trim()}
+              className={`px-6 py-3 text-white rounded-lg transition-all font-medium ${
+                isLoading || !question.trim()
+                  ? "bg-indigo-400 cursor-not-allowed"
+                  : "bg-indigo-600 hover:bg-indigo-700"
+              }`}
+            >
+              {isLoading ? "Sending..." : "Send"}
+            </button>
+          </div>
+        </form>
+
+        {/* Optional: New Conversation Button */}
+        {conversationId && (
+          <div className="mt-4 text-center">
+            <button
+              onClick={() => {
+                setConversationId(null);
+                setResponse("");
+                setQuestion("");
+              }}
+              className="text-sm text-indigo-600 hover:underline"
+            >
+              Start New Conversation
+            </button>
+          </div>
+        )}
       </div>
-    </div>
+
+      <footer className="text-center py-6 text-sm text-gray-500 mt-6">
+        © 2025 A2X CORP — All rights reserved
+      </footer>
+    </main>
   );
 }
