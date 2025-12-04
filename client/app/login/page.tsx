@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,7 +17,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -34,10 +35,13 @@ export default function LoginPage() {
       if (!res.ok) {
         setStatus(`❌ ${data.error || 'Login failed.'}`);
       } else {
-        localStorage.setItem('token', data.token);
+        // Save user in localStorage (no token)
         localStorage.setItem('user', JSON.stringify(data.user));
+        // After login request succeeds
+        localStorage.setItem('userId', data.user.id.toString());
+
         setStatus('✅ Login successful! Redirecting...');
-        setTimeout(() => router.push('/profile'), 1500);
+        setTimeout(() => router.push('/dashboard'), 1500);
       }
     } catch (err) {
       console.error('Network error:', err);
@@ -48,48 +52,81 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-100 via-indigo-100 to-gray-50 text-gray-800">
-      <div className="bg-white p-8 rounded-2xl shadow-xl w-[90%] sm:w-[400px]">
-        <h2 className="text-2xl font-bold mb-4 text-center">Sign In</h2>
+    <main className="flex items-center justify-center min-h-screen bg-zinc-900 text-zinc-100 p-4">
+      
+      {/* Login Card - Darkened background, strong shadow, and green ring hover */}
+      <div className="bg-zinc-800 p-8 rounded-2xl shadow-2xl shadow-black/70 w-full max-w-sm sm:w-[400px] transition-all duration-300 hover:shadow-green-900/50 border border-zinc-700">
+        
+        <div className="flex flex-col items-center mb-6">
+            <Image
+                    src='/logo.png'
+                    alt=''
+                    width={200}
+                    height={150}
+                    className="p-4"
+                  />
+            {/* <h2 className="text-3xl font-extrabold tracking-tight text-white">
+                Welcome Back
+            </h2> */}
+            <p className="text-sm text-zinc-400 mt-1">Sign in to your account</p>
+        </div>
 
-        <form onSubmit={handleLogin} className="space-y-4">
+        <form onSubmit={handleLogin} className="space-y-5">
+          {/* Input fields adjusted for dark theme */}
           <input
             type="email"
             placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-indigo-500"
+            // Dark input styling
+            className="w-full border border-zinc-700 bg-zinc-900 text-zinc-100 p-3 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition duration-200 placeholder-zinc-500"
           />
+
           <input
             type="password"
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-indigo-500"
+            // Dark input styling
+            className="w-full border border-zinc-700 bg-zinc-900 text-zinc-100 p-3 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition duration-200 placeholder-zinc-500"
           />
+
+          {/* Submit Button - Green accent color */}
           <button
             type="submit"
             disabled={loading}
-            className={`w-full text-white py-3 rounded-lg transition-all ${
+            className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-white transition-all transform hover:scale-[1.01] shadow-lg ${
               loading
-                ? 'bg-indigo-400 cursor-not-allowed'
-                : 'bg-indigo-600 hover:bg-indigo-700'
+                ? 'bg-green-700/50 cursor-not-allowed shadow-none'
+                : 'bg-green-600 hover:bg-green-700 shadow-green-900/50'
             }`}
           >
-            {loading ? 'Signing In...' : 'Sign In'}
+            {loading ? (
+              <>
+                <Loader2 size={20} className="animate-spin" />
+                Signing In...
+              </>
+            ) : (
+              'Sign In'
+            )}
           </button>
         </form>
 
+        {/* Status Message */}
         {status && (
-          <p
-            className={`mt-4 text-center text-sm font-medium ${
-              status.startsWith('✅') ? 'text-green-600' : 'text-red-600'
-            }`}
-          >
-            {status}
-          </p>
+          <div className={`mt-6 p-3 rounded-lg flex items-center gap-2 ${
+            // Status colors adjusted for dark background
+            status.startsWith('✅') 
+              ? 'bg-green-900/50 text-green-300 border border-green-700' 
+              : 'bg-red-900/50 text-red-300 border border-red-700'
+          }`}>
+            {status.startsWith('✅') ? <CheckCircle size={18} /> : <AlertTriangle size={18} />}
+            <p className="text-sm font-medium">
+              {status}
+            </p>
+          </div>
         )}
       </div>
     </main>

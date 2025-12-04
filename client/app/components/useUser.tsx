@@ -22,7 +22,7 @@ export default function useUser() {
 
         // 🔧 If running locally, override ngrok with localhost
         if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-          apiUrl = 'http://localhost:3000';
+          apiUrl = 'http://localhost:4000';
         }
 
         const endpoint = `${apiUrl}/api/user-report/${parsedUser.user_id}`;

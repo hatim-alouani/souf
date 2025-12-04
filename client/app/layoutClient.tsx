@@ -8,7 +8,6 @@ export default function LayoutClient({ children }: { children: React.ReactNode }
   const hideNavbar = pathname === '/' || pathname === '/login' || pathname === '/audit';
   return (
     <>
-      {!hideNavbar && <Navbar />}
       <main className="flex-1">{children}</main>
     </>
   );

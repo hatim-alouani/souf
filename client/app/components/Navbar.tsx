@@ -1,144 +1,169 @@
 'use client';
-import { useRouter, usePathname } from 'next/navigation';
-import { useState } from 'react';
-import { Menu, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { User, LogOut, Menu, X, MessageSquare, Plus, History } from 'lucide-react';
+import Image from 'next/image';
+
+// Mock Router
+const useMockRouter = () => {
+  const pathname = typeof window !== 'undefined' ? window.location.pathname : '/';
+  const push = (href) => {
+    if (typeof window !== 'undefined') {
+      window.history.pushState({}, '', href);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    }
+  };
+  return { push, pathname };
+};
 
 export default function Navbar() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const [open, setOpen] = useState(false);
+  const { push: routerPush, pathname } = useMockRouter();
+  
+  // State for Dropdowns and Sidebar
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // Hide navbar on login/signup pages
-  if (pathname === '/login' || pathname === '/signup') {
-    return null;
-  }
+  // Mock Chat History Data
+  const chatHistory = [
+    { id: 1, title: 'Project Brainstorming', date: 'Today' },
+    { id: 2, title: 'React Component Help', date: 'Yesterday' },
+    { id: 3, title: 'Database Schema Design', date: 'Previous 7 Days' },
+    { id: 4, title: 'Debugging API Routes', date: 'Previous 7 Days' },
+  ];
+
+  // Hide navbar on login/signup
+  if (pathname === '/login' || pathname === '/signup') return null;
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    router.push('/');
-  };
-
-  const handleLogoClick = () => {
-    handleLogout();
+    routerPush('/');
   };
 
   return (
-    <nav className="w-full bg-white/80 backdrop-blur-lg shadow-sm px-6 py-4 flex justify-between items-center relative z-50">
-      {/* Left: Logo */}
-      <div
-        className="flex items-center gap-2 cursor-pointer"
-        onClick={handleLogoClick}
-      >
-        <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
-          A
+    <>
+      {/* --- Main Top Navbar --- */}
+      <nav className="w-full bg-zinc-950/90 backdrop-blur-md border-b border-zinc-800 px-6 py-4 flex justify-between items-center fixed top-0 left-0 right-0 z-40 shadow-lg shadow-black/50 h-20">
+        
+        {/* Left: Hamburger Menu (Triggers Sidebar) */}
+        <button
+          onClick={() => setIsSidebarOpen(true)}
+          className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
+        >
+          <Menu size={24} />
+        </button>
+
+        {/* Center: Logo (Absolutely Positioned) */}
+        <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
+          <Image
+            src='/logo.png'
+            alt='Logo'
+            width={120}
+            height={40}
+            className="object-contain cursor-pointer"
+            onClick={() => routerPush('/')}
+          />
         </div>
-        <h1 className="text-lg font-semibold tracking-tight text-gray-800">
-          A2X CORP
-        </h1>
-      </div>
 
-      {/* Right: Links + Profile */}
-      <div className="hidden md:flex items-center gap-8">
-
-        <button
-          onClick={() => router.push('/dashboard')}
-          className="text-gray-700 hover:text-blue-600 transition-all font-medium"
-        >
-          Dashboard
-        </button>
-
-        {/* NEW Chatbot button */}
-        <button
-          onClick={() => router.push('/chatbot')}
-          className="text-gray-700 hover:text-blue-600 transition-all font-medium"
-        >
-          Chatbot
-        </button>
-
-        <button
-          onClick={() => router.push('/profile')}
-          className="text-gray-700 hover:text-blue-600 transition-all font-medium"
-        >
-          Profile
-        </button>
-
-        {/* User Avatar + Dropdown */}
-        <div className="relative group">
-          <div className="w-9 h-9 bg-gray-200 text-gray-700 rounded-full flex items-center justify-center cursor-pointer font-semibold hover:bg-gray-300 transition">
-            <img
-              src="/icons/profile.png"
-              alt="Profile"
-              className="w-6 h-6 rounded-full"
-            />
+        {/* Right: Account Dropdown */}
+        <div className="relative">
+          <div 
+            className="w-10 h-10 bg-zinc-800 text-zinc-300 rounded-full flex items-center justify-center cursor-pointer font-semibold transition hover:bg-zinc-700 ring-2 ring-green-600/50"
+            onClick={() => setIsProfileOpen(!isProfileOpen)}
+          >
+            <User size={20} className="text-green-500" />
           </div>
 
-          <div className="absolute right-0 mt-2 w-44 bg-white border border-gray-100 shadow-lg rounded-lg opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50">
-            <button
-              onClick={() => router.push('/account')}
-              className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-50 text-sm"
-            >
-              Manage Profile
-            </button>
-            <button
-              onClick={handleLogout}
-              className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-50 text-sm"
-            >
-              Logout
-            </button>
-          </div>
+          {/* Profile Dropdown Menu */}
+          {isProfileOpen && (
+            <div className="absolute right-0 mt-3 w-48 bg-zinc-900 border border-zinc-700 shadow-2xl shadow-black/70 rounded-xl z-50 origin-top-right animate-in fade-in zoom-in-95 duration-200">
+              <div className="p-2">
+                <button
+                  onClick={() => { routerPush('/account'); setIsProfileOpen(false); }}
+                  className="flex items-center gap-3 w-full text-left px-3 py-2 text-zinc-300 hover:bg-zinc-800 rounded-lg text-sm transition-colors"
+                >
+                  <User size={16} className="text-zinc-500" /> Manage Account
+                </button>
+                <div className="border-t border-zinc-700 my-2"></div>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-3 w-full text-left px-3 py-2 text-red-400 hover:bg-zinc-800 rounded-lg text-sm transition-colors"
+                >
+                  <LogOut size={16} className="text-red-500" /> Logout
+                </button>
+              </div>
+            </div>
+          )}
         </div>
-      </div>
+      </nav>
 
-      {/* Mobile Menu Button */}
-      <button
-        className="md:hidden text-gray-700"
-        onClick={() => setOpen(!open)}
-      >
-        {open ? <X size={22} /> : <Menu size={22} />}
-      </button>
-
-      {/* Mobile Dropdown */}
-      {open && (
-        <div className="absolute top-16 right-0 w-full bg-white border-t border-gray-200 flex flex-col items-center py-4 shadow-md md:hidden">
-
-          <button
-            onClick={() => router.push('/dashboard')}
-            className="py-2 text-gray-700 hover:text-blue-600"
-          >
-            Dashboard
-          </button>
-
-          {/* NEW Chatbot mobile button */}
-          <button
-            onClick={() => router.push('/chatbot')}
-            className="py-2 text-gray-700 hover:text-blue-600"
-          >
-            Chatbot
-          </button>
-
-          <button
-            onClick={() => router.push('/profile')}
-            className="py-2 text-gray-700 hover:text-blue-600"
-          >
-            Profile
-          </button>
-
-          <button
-            onClick={() => router.push('/account')}
-            className="py-2 text-gray-700 hover:text-blue-600"
-          >
-            Manage Profile
-          </button>
-
-          <button
-            onClick={handleLogout}
-            className="py-2 text-gray-700 hover:text-blue-600"
-          >
-            Logout
-          </button>
-        </div>
+      {/* --- Sidebar (Chat History Style) --- */}
+      
+      {/* 1. Backdrop Overlay (Click to close) */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+          onClick={() => setIsSidebarOpen(false)}
+        />
       )}
-    </nav>
+
+      {/* 2. Sliding Drawer */}
+      <aside 
+        className={`fixed top-0 left-0 h-full w-72 bg-zinc-950 border-r border-zinc-800 z-50 transform transition-transform duration-300 ease-in-out shadow-2xl ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="flex flex-col h-full p-4">
+          
+          {/* Sidebar Header: Close & New Chat */}
+          <div className="flex justify-between items-center mb-6">
+             <button
+              onClick={() => setIsSidebarOpen(false)}
+              className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition"
+            >
+              <Menu size={24} />
+            </button>
+             <button 
+              onClick={() => setIsSidebarOpen(false)} // Add new chat logic here
+              className="p-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-full transition"
+              title="New Chat"
+             >
+                <Plus size={20} />
+             </button>
+          </div>
+
+          {/* New Chat Big Button */}
+          <button className="flex items-center gap-3 w-full px-4 py-3 bg-zinc-900 border border-zinc-700 hover:bg-zinc-800 text-zinc-200 rounded-full mb-6 transition-all shadow-sm group">
+            <Plus size={18} className="text-green-500 group-hover:rotate-90 transition-transform duration-300" />
+            <span className="text-sm font-medium">New Chat</span>
+          </button>
+
+          {/* Chat History List */}
+          <div className="flex-1 overflow-y-auto pr-2 space-y-4">
+            <div>
+              <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3 px-2">Recent</h3>
+              <div className="space-y-1">
+                {chatHistory.map((chat) => (
+                  <button
+                    key={chat.id}
+                    className="flex items-center gap-3 w-full text-left px-3 py-2.5 text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100 rounded-lg text-sm transition-all group overflow-hidden"
+                  >
+                    <MessageSquare size={16} className="text-zinc-600 group-hover:text-green-500 shrink-0 transition-colors" />
+                    <span className="truncate">{chat.title}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Sidebar Footer */}
+          <div className="pt-4 border-t border-zinc-800 mt-auto">
+             <button className="flex items-center gap-3 w-full px-3 py-2 text-zinc-400 hover:text-white hover:bg-zinc-900 rounded-lg text-sm transition-colors">
+                <History size={16} /> 
+                <span>View All History</span>
+             </button>
+          </div>
+        </div>
+      </aside>
+    </>
   );
 }

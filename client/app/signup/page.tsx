@@ -3,88 +3,69 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
-type Persona = 'executive' | 'manager' | 'business_owner' | '';
-
 export default function SignupPage() {
   const router = useRouter();
 
-  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [email2, setEmail2] = useState('');
-  const [persona, setPersona] = useState<Persona>('');
+  const [password, setPassword] = useState('');
+  const [password2, setPassword2] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [status, setStatus] = useState<string>('');
 
   useEffect(() => {
-    document.title = 'AI-AUDIT | Sign Up';
+    document.title = 'Sign Up';
   }, []);
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setStatus('');
+async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+  e.preventDefault();
+  setStatus('');
 
-    if (!fullName.trim()) return setStatus('Please enter your full name.');
-    if (!email || !email2) return setStatus('Please enter your email twice.');
-    if (email !== email2) return setStatus('Emails do not match.');
-    if (!persona) return setStatus('Please select your role.');
+  if (!email || !email2) return setStatus('Please enter your email twice.');
+  if (email !== email2) return setStatus('Emails do not match.');
+  if (!password || !password2) return setStatus('Enter your password twice.');
+  if (password !== password2) return setStatus('Passwords do not match.');
 
-    setSubmitting(true);
+  setSubmitting(true);
 
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        // match your backend register payload
-        body: JSON.stringify({
-          full_name: fullName,
-          email,
-          user_role : persona,
-        }),
-      });
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
 
-      const text = await res.text();
-      let data: any = {};
-      try { data = JSON.parse(text); } catch (e) {}
+    const data: { error?: string } = await res.json();
 
-      if (res.ok && data.ok) {
-        setStatus('✅ Check your inbox to confirm your email and set your password.');
-        // optionally route to a "check your email" screen after a moment
-        setTimeout(() => router.push('/login'), 2000);
-      } else {
-        setStatus(data.error || 'Registration failed. Please try again.');
-      }
-    } catch (err) {
-      console.error(err);
-      setStatus('Network error. Please try again.');
-    } finally {
-      setSubmitting(false);
+    if (res.ok) {
+      setStatus('✅ Account created successfully! Redirecting…');
+      setTimeout(() => router.push('/login'), 1500);
+    } else {
+      setStatus(data.error || 'Signup failed. Try again.');
     }
+  } catch (err) {
+    console.error(err);
+    setStatus('Network error. Please try again.');
+  } finally {
+    setSubmitting(false);
   }
+}
+
+
 
   return (
     <main className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-gray-100 to-indigo-100 text-gray-800 font-sans">
-      {/* Title */}
-      <div className="text-center mb-10 animate-fadeIn">
+      <div className="text-center mb-10">
         <h1 className="text-5xl font-extrabold tracking-tight text-gray-900 mb-2">
-          AI-AUDIT
+          Create Account
         </h1>
-        <p className="text-lg text-gray-600">Interactive AI Marketing Auditor</p>
+        <p className="text-lg text-gray-600">Join us today</p>
       </div>
 
-      {/* Card */}
-      <div className="bg-white/70 backdrop-blur-xl rounded-2xl shadow-xl p-8 w-[90%] sm:w-[420px] animate-fadeIn">
-        <h2 className="text-2xl font-semibold mb-6 text-center">Create your account</h2>
+      <div className="bg-white/70 backdrop-blur-xl rounded-2xl shadow-xl p-8 w-[90%] sm:w-[420px]">
+        <h2 className="text-2xl font-semibold mb-6 text-center">Sign Up</h2>
 
         <form onSubmit={onSubmit} className="space-y-4">
-          <input
-            type="text"
-            placeholder="Full name"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-indigo-500"
-            required
-          />
-
           <input
             type="email"
             placeholder="Email address"
@@ -103,17 +84,23 @@ export default function SignupPage() {
             required
           />
 
-          <select
-            value={persona}
-            onChange={(e) => setPersona(e.target.value as Persona)}
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
             className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-indigo-500"
             required
-          >
-            <option value="">Select your role</option>
-            <option value="executive">Executive</option>
-            <option value="manager">Manager</option>
-            <option value="business_owner">Business Owner</option>
-          </select>
+          />
+
+          <input
+            type="password"
+            placeholder="Confirm password"
+            value={password2}
+            onChange={(e) => setPassword2(e.target.value)}
+            className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-indigo-500"
+            required
+          />
 
           <button
             type="submit"
@@ -151,7 +138,7 @@ export default function SignupPage() {
       </div>
 
       <footer className="text-center py-6 text-sm text-gray-500">
-        © 2025 A2X CORP — All rights reserved
+        © 2025 — All rights reserved
       </footer>
     </main>
   );
