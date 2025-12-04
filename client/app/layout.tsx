@@ -17,6 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="stylesheet" href="https://gpt-head-assets.unith.ai/fonts/stylesheet.css" />
       </head>
       <body className="min-h-screen bg-white text-gray-800">
+        cz-shortcut-listen="true"
         <Script src="https://embedded.unith.ai/dist/bundle.js" strategy="afterInteractive" />
         <Script src="https://embedded.unith.ai/microsoft-speech-recognition.js" strategy="afterInteractive" />
         <LayoutClient>{children}</LayoutClient>
